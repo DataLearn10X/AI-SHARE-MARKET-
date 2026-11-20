@@ -1,0 +1,21 @@
+symbol,name,sector,industry,exchange,listing_year,website,description
+RELIANCE,Reliance Industries Limited,Energy,Oil & Gas Refining,NSE,1977,https://www.ril.com,Integrated energy and retail conglomerate (sample seed).
+TCS,Tata Consultancy Services Limited,Information Technology,IT Services,NSE,2004,https://www.tcs.com,Global IT services and consulting (sample seed).
+INFY,Infosys Limited,Information Technology,IT Services,NSE,1993,https://www.infosys.com,IT services and consulting (sample seed).
+HDFCBANK,HDFC Bank Limited,Financials,Banking,NSE,1995,https://www.hdfcbank.com,Private sector bank (sample seed).
+ICICIBANK,ICICI Bank Limited,Financials,Banking,NSE,1997,https://www.icicibank.com,Private sector bank (sample seed).
+SBIN,State Bank of India,Financials,Banking,NSE,1995,https://www.sbi.co.in,Largest public sector bank (sample seed).
+HINDUNILVR,Hindustan Unilever Limited,Consumer Staples,FMCG,NSE,1955,https://www.hul.co.in,FMCG company (sample seed).
+ITC,ITC Limited,Consumer Staples,Diversified FMCG,NSE,1995,https://www.itcportal.com,Diversified conglomerate (sample seed).
+LT,Larsen & Toubro Limited,Industrials,Construction & Engineering,NSE,2003,https://www.larsentoubro.com,Engineering and construction (sample seed).
+AXISBANK,Axis Bank Limited,Financials,Banking,NSE,1998,https://www.axisbank.com,Private sector bank (sample seed).
+KOTAKBANK,Kotak Mahindra Bank Limited,Financials,Banking,NSE,2003,https://www.kotak.com,Private sector bank (sample seed).
+BAJFINANCE,Bajaj Finance Limited,Financials,NBFC,NSE,2003,https://www.bajajfinserv.in,NBFC (sample seed).
+MARUTI,Maruti Suzuki India Limited,Consumer Discretionary,Automobiles,NSE,2003,https://www.marutisuzuki.com,Passenger vehicles (sample seed).
+SUNPHARMA,Sun Pharmaceutical Industries Limited,Healthcare,Pharmaceuticals,NSE,1994,https://www.sunpharma.com,Pharmaceutical company (sample seed).
+WIPRO,Wipro Limited,Information Technology,IT Services,NSE,1945,https://www.wipro.com,IT services (sample seed).
+HCLTECH,HCL Technologies Limited,Information Technology,IT Services,NSE,1999,https://www.hcltech.com,IT services (sample seed).
+TITAN,Titan Company Limited,Consumer Discretionary,Consumer Durables,NSE,1987,https://www.titan.co.in,Consumer goods (sample seed).
+ADANIENT,Adani Enterprises Limited,Industrials,Diversified,NSE,1994,https://www.adanienterprises.com,Diversified conglomerate (sample seed).
+NTPC,NTPC Limited,Utilities,Power,NSE,2004,https://www.ntpc.co.in,Power utility (sample seed).
+ONGC,Oil and Natural Gas Corporation Limited,Energy,Oil & Gas Exploration,NSE,1999,https://www.ongcindia.com,Oil & gas exploration (sample seed).
