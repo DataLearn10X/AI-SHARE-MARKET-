@@ -38,6 +38,7 @@ from analytics.fundamental_analysis import add_growth_and_margins, calculate_cag
 from analytics.price_analysis import add_moving_averages, price_summary, resample_ohlcv
 from agents.research_agent import answer_question
 from agents.report_generator import generate_report
+from services.company_overview_service import get_company_overview
 from services.company_service import search_companies, get_company
 from services.portfolio_service import add_holding, list_holdings, remove_holding
 from services.alert_service import add_alert, delete_alert, evaluate_alerts, list_alerts
@@ -211,6 +212,22 @@ def render_fundamental() -> None:
     company = get_company(symbol)
     if company:
         profile_card(company.to_dict())
+
+    section_header("Company Overview (live via yfinance)")
+    ov = get_company_overview(symbol)
+    if ov:
+        st.markdown(f"**{ov.get('name')}**")
+        st.caption(f"Sector: {ov.get('sector')} | Industry: {ov.get('industry')} | Exchange: {ov.get('exchange')} | Country: {ov.get('country')}")
+        if ov.get("market_cap"):
+            st.metric("Market Cap", f"{ov.get('market_cap'):,.0f}")
+        if ov.get("enterprise_value"):
+            st.metric("Enterprise Value", f"{ov.get('enterprise_value'):,.0f}")
+        if ov.get("description"):
+            st.write(ov.get("description"))
+        sample_note("Company overview sourced from yfinance (unofficial).")
+    else:
+        empty_state("Company overview unavailable.")
+
     alert(f"Showing placeholder fundamentals for {symbol}. Real data integration pending.", "info")
 
     if st.button("Fetch live quote (optional, requires network)"):
@@ -244,10 +261,10 @@ def render_fundamental() -> None:
     inc = st.session_state.get("income_df")
     if inc is not None and not inc.empty:
         disp = inc.copy()
-        for col in ("revenue", "operating_profit", "ebitda", "net_profit"):
+        for col in ("revenue", "gross_profit", "operating_profit", "ebitda", "net_profit"):
             if col in disp.columns:
                 disp[col] = disp[col].apply(lambda x: f"{x:,.0f}" if pd.notna(x) else "N/A")
-        st.table(disp[["period", "revenue", "operating_profit", "ebitda", "net_profit", "eps"]])
+        st.table(disp[["period", "revenue", "gross_profit", "operating_profit", "ebitda", "net_profit", "eps"]])
 
         inc_chart = inc.dropna(subset=["revenue"]).copy()
         inc2 = add_growth_and_margins(inc_chart)
@@ -266,6 +283,15 @@ def render_fundamental() -> None:
                 rev_cagr = calculate_cagr(float(valid["revenue"].iloc[0]), float(valid["revenue"].iloc[-1]), max(1, int(round(years))))
                 if rev_cagr is not None and not pd.isna(rev_cagr):
                     st.caption(f"Revenue CAGR over span: {rev_cagr:.2f}%")
+        # 3Y and 5Y CAGR if enough data
+        if "net_profit" in valid.columns and len(valid) >= 4:
+            cagr3 = calculate_cagr(float(valid["revenue"].iloc[-4]), float(valid["revenue"].iloc[-1]), 3)
+            if cagr3 is not None and not pd.isna(cagr3):
+                st.caption(f"Revenue CAGR (3Y): {cagr3:.2f}%")
+        if "net_profit" in valid.columns and len(valid) >= 6:
+            cagr5 = calculate_cagr(float(valid["revenue"].iloc[-6]), float(valid["revenue"].iloc[-1]), 5)
+            if cagr5 is not None and not pd.isna(cagr5):
+                st.caption(f"Revenue CAGR (5Y): {cagr5:.2f}%")
         sample_note("Financial statements sourced from yfinance (unofficial). Currency/units as reported.")
     else:
         empty_state("Click 'Fetch Income Statement' to load live data.")
@@ -392,6 +418,36 @@ def render_fundamental() -> None:
         st.caption(f"Price: {val.get('price')} | EPS: {val.get('eps')} | Book Value/Share: {val.get('book_value_per_share')} | Growth: {val.get('growth_rate_pct')}")
         if val.get("yfinance_pe") is not None:
             st.caption(f"Cross-check (yfinance): P/E {val['yfinance_pe']}, P/B {val['yfinance_pb']}, PEG {val['yfinance_peg']}, Div Yield {val['yfinance_dividend_yield_pct']}")
+
+        section_header("Extended Valuation & Health (from yfinance)")
+        ev1, ev2, ev3, ev4 = st.columns(4)
+        with ev1:
+            st.metric("EV/EBITDA", f"{val.get('ev_ebitda'):.2f}" if val.get("ev_ebitda") is not None else "N/A")
+        with ev2:
+            st.metric("P/S", f"{val.get('price_to_sales'):.2f}" if val.get("price_to_sales") is not None else "N/A")
+        with ev3:
+            st.metric("Earnings Yield", f"{val.get('earnings_yield_pct'):.2f}%" if val.get("earnings_yield_pct") is not None else "N/A")
+        with ev4:
+            st.metric("Dividend Yield", f"{val.get('dividend_yield_pct'):.2f}%" if val.get("dividend_yield_pct") is not None else "N/A")
+
+        h1, h2, h3, h4 = st.columns(4)
+        with h1:
+            st.metric("Gross Margin", f"{val.get('gross_margin_pct'):.2f}%" if val.get("gross_margin_pct") is not None else "N/A")
+        with h2:
+            st.metric("Operating Margin", f"{val.get('operating_margin_pct'):.2f}%" if val.get("operating_margin_pct") is not None else "N/A")
+        with h3:
+            st.metric("Net Margin", f"{val.get('net_margin_pct'):.2f}%" if val.get("net_margin_pct") is not None else "N/A")
+        with h4:
+            st.metric("Quick Ratio", f"{val.get('quick_ratio'):.2f}" if val.get("quick_ratio") is not None else "N/A")
+
+        g1, g2, g3 = st.columns(3)
+        with g1:
+            st.metric("Revenue Growth", f"{val.get('revenue_growth_pct'):.2f}%" if val.get("revenue_growth_pct") is not None else "N/A")
+        with g2:
+            st.metric("Earnings Growth", f"{val.get('earnings_growth_pct'):.2f}%" if val.get("earnings_growth_pct") is not None else "N/A")
+        with g3:
+            st.metric("Current Ratio", f"{val.get('current_ratio'):.2f}" if val.get("current_ratio") is not None else "N/A")
+
         sample_note("Valuation computed from live price + financial statements (unofficial).")
     else:
         empty_state("Click 'Compute Valuation' to calculate.")

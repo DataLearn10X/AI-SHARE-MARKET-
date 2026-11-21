@@ -43,6 +43,8 @@ def compute_ratios(income_df: pd.DataFrame, balance_df: pd.DataFrame = None,
 
     # Margins
     if "revenue" in base.columns:
+        if "gross_profit" in base.columns:
+            base["gross_margin_pct"] = base["gross_profit"] / base["revenue"] * 100
         if "operating_profit" in base.columns:
             base["operating_margin_pct"] = base["operating_profit"] / base["revenue"] * 100
         if "ebitda" in base.columns:
@@ -65,6 +67,8 @@ def compute_ratios(income_df: pd.DataFrame, balance_df: pd.DataFrame = None,
         base["interest_coverage"] = base["ebit"] / base["interest_expense"].abs()
     if "current_assets" in base.columns and "current_liabilities" in base.columns:
         base["current_ratio"] = base["current_assets"] / base["current_liabilities"]
+        if "inventory" in base.columns:
+            base["quick_ratio"] = (base["current_assets"] - base["inventory"]) / base["current_liabilities"]
 
     # Cash flow
     if "operating_cf" in base.columns:

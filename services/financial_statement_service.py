@@ -46,6 +46,7 @@ def fetch_income_statement(symbol: str, quarterly: bool = False) -> Optional[pd.
             return None
 
         revenue_s = _get_row(raw, "Total Revenue", "Operating Revenue")
+        gp_s = _get_row(raw, "Gross Profit")
         op_s = _get_row(raw, "Operating Income")
         ebitda_s = _get_row(raw, "EBITDA")
         ebit_s = _get_row(raw, "EBIT")
@@ -71,6 +72,7 @@ def fetch_income_statement(symbol: str, quarterly: bool = False) -> Optional[pd.
                     "period": label,
                     "period_end": period_end,
                     "revenue": val(revenue_s),
+                    "gross_profit": val(gp_s),
                     "operating_profit": val(op_s),
                     "ebitda": val(ebitda_s),
                     "ebit": val(ebit_s),

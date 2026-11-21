@@ -62,6 +62,23 @@ def get_valuation_inputs(symbol: str) -> Optional[dict]:
         growth_rate_pct=float(growth_rate) if growth_rate is not None else None,
         dividend_per_share=float(dividend) if dividend is not None else None,
     )
+    # EV/EBITDA and P/S from info + financials
+    ev = info.get("enterpriseValue")
+    ebitda = None
+    if income is not None and not income.empty and "ebitda" in income.columns:
+        ebitda = income["ebitda"].dropna().iloc[-1] if not income["ebitda"].dropna().empty else None
+    result["ev_ebitda"] = (ev / ebitda) if (ev and ebitda and ebitda != 0) else None
+    result["price_to_sales"] = info.get("priceToSalesTrailing12Months")
+    result["earnings_yield_pct"] = (eps / price * 100) if (eps and price and price != 0) else None
+    result["gross_margin_pct"] = info.get("grossMargins", 0) * 100 if info.get("grossMargins") is not None else None
+    result["operating_margin_pct"] = info.get("operatingMargins", 0) * 100 if info.get("operatingMargins") is not None else None
+    result["net_margin_pct"] = info.get("profitMargins", 0) * 100 if info.get("profitMargins") is not None else None
+    result["revenue_growth_pct"] = info.get("revenueGrowth", 0) * 100 if info.get("revenueGrowth") is not None else None
+    result["earnings_growth_pct"] = info.get("earningsGrowth", 0) * 100 if info.get("earningsGrowth") is not None else None
+    result["quick_ratio"] = info.get("quickRatio")
+    result["current_ratio"] = info.get("currentRatio")
+    result["market_cap"] = info.get("marketCap")
+    result["enterprise_value"] = ev
     result["shares_outstanding"] = shares
     result["yfinance_pe"] = info.get("trailingPE")
     result["yfinance_pb"] = info.get("priceToBook")

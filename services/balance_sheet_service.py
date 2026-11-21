@@ -65,6 +65,7 @@ def fetch_balance_sheet(symbol: str, quarterly: bool = False) -> Optional[pd.Dat
                     "cash_and_equivalents": val("Cash And Cash Equivalents", "Cash Cash Equivalents And Short Term Investments"),
                     "current_assets": val("Current Assets"),
                     "current_liabilities": val("Current Liabilities"),
+                    "inventory": val("Inventory"),
                     "source": "yfinance",
                 }
             )
