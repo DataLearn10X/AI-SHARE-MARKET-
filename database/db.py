@@ -42,6 +42,28 @@ def init_db() -> None:
         )
         """
     )
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS alerts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            symbol TEXT NOT NULL,
+            metric TEXT NOT NULL,
+            operator TEXT NOT NULL,
+            threshold REAL NOT NULL,
+            active INTEGER NOT NULL DEFAULT 1,
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS cache (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL,
+            expires_at REAL NOT NULL
+        )
+        """
+    )
     conn.commit()
     conn.close()
 
