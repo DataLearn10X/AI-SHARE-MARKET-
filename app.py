@@ -15,6 +15,8 @@ import streamlit as st
 from config.logging_config import logger
 from config.settings import settings
 from frontend.theme import apply_theme
+from analytics.technical_indicators import apply_indicators
+from frontend.components.advanced_chart import advanced_price_chart, macd_chart, rsi_chart
 from frontend.components.charts import candlestick_chart
 from frontend.components.ui import (
     alert,
@@ -451,59 +453,88 @@ def render_fundamental() -> None:
 
 
 def render_price_history() -> None:
-    page_header("Price History", "Historical prices with candlesticks, volume and moving averages.")
+    page_header("Price History", "Advanced interactive charting with technical indicators.")
     symbols = [c.symbol for c in search_companies("")]
     symbol = st.selectbox("Select stock", symbols, index=0, key="ph_symbol")
+
     col1, col2, col3 = st.columns(3)
     with col1:
-        period = st.selectbox("Period", ["1mo", "3mo", "6mo", "1y", "2y", "5y"], index=3)
+        period_label = st.selectbox("Period", ["1D", "1W", "1M", "3M", "6M", "1Y", "2Y", "3Y", "5Y", "MAX"], index=5)
     with col2:
-        interval_label = st.selectbox("Interval", ["Daily", "Weekly", "Monthly", "Yearly"], index=0)
+        chart_type = st.selectbox("Chart Type", ["Candlestick", "Line", "Area"], index=0)
     with col3:
-        st.write("")
-        load = st.button("Load Price History")
+        benchmark = st.checkbox("Compare with Nifty 50")
 
-    interval_map = {"Daily": "daily", "Weekly": "weekly", "Monthly": "monthly", "Yearly": "yearly"}
-    interval = interval_map[interval_label]
+    indicators = st.multiselect(
+        "Indicators",
+        ["SMA 20", "SMA 50", "SMA 100", "SMA 200", "EMA 20", "RSI 14", "MACD", "Bollinger Bands"],
+        default=[],
+    )
+    show_volume = st.checkbox("Show Volume", value=True)
 
-    if load or "price_df" in st.session_state:
-        if load:
-            with st.spinner("Fetching price history..."):
-                fetch_interval = "1d" if interval in ("daily", "yearly") else ("1wk" if interval == "weekly" else "1mo")
-                df = market_data_service.get_price_history(symbol, period=period, interval=fetch_interval)
-            if df is not None and not df.empty:
-                if interval == "yearly":
-                    df = resample_ohlcv(df, "yearly")
-                df = add_moving_averages(df, [20, 50])
-                st.session_state["price_df"] = df
-                st.session_state["price_symbol"] = symbol
-            else:
-                st.session_state.pop("price_df", None)
-                alert("Price history unavailable. Provider may be offline or symbol not found.", "warning")
+    period_map = {
+        "1D": "1d", "1W": "5d", "1M": "1mo", "3M": "3mo", "6M": "6mo",
+        "1Y": "1y", "2Y": "2y", "3Y": "5y", "5Y": "5y", "MAX": "max",
+    }
+    period = period_map[period_label]
 
-        df = st.session_state.get("price_df")
+    if st.button("Load Price History", key="load_ph"):
+        with st.spinner("Fetching price history..."):
+            df = market_data_service.get_price_history(symbol, period=period, interval="1d")
+            bench_df = None
+            if benchmark:
+                bench_df = market_data_service.get_price_history("^NSEI", period=period, interval="1d")
         if df is not None and not df.empty:
-            summary = price_summary(df)
-            m1, m2, m3, m4 = st.columns(4)
-            with m1:
-                metric_card("Last Close", f"{summary.get('last_close', 0):,.2f}", sample=True)
-            with m2:
-                pct = summary.get("change_pct", 0)
-                metric_card("Change %", f"{pct:+.2f}%", sample=True,
-                            delta_positive=pct >= 0)
-            with m3:
-                metric_card("Period High", f"{summary.get('high', 0):,.2f}", sample=True)
-            with m4:
-                metric_card("Period Low", f"{summary.get('low', 0):,.2f}", sample=True)
-
-            fig = candlestick_chart(df, title=f"{st.session_state.get('price_symbol', symbol)} — {period} ({interval_label})")
-            if fig is not None:
-                st.plotly_chart(fig, use_container_width=True)
-            sample_note("Prices sourced from yfinance (optional, unofficial). All values are live-fetched, not verified exchange data.")
+            df = df.dropna(subset=["close"]) if "close" in df.columns else df
+            df = apply_indicators(df, indicators)
+            st.session_state["price_df"] = df
+            st.session_state["price_symbol"] = symbol
+            st.session_state["bench_df"] = bench_df
+            st.session_state["chart_type"] = chart_type
+            st.session_state["indicators"] = indicators
+            st.session_state["show_volume"] = show_volume
         else:
-            empty_state("Click 'Load Price History' to fetch data.")
+            st.session_state.pop("price_df", None)
+            alert("Price history unavailable. Provider may be offline or symbol not found.", "warning")
+
+    df = st.session_state.get("price_df")
+    if df is not None and not df.empty:
+        summary = price_summary(df)
+        m1, m2, m3, m4 = st.columns(4)
+        with m1:
+            metric_card("Last Close", f"{summary.get('last_close', 0):,.2f}", sample=True)
+        with m2:
+            pct = summary.get("change_pct", 0)
+            metric_card("Change %", f"{pct:+.2f}%", sample=True, delta_positive=pct >= 0)
+        with m3:
+            metric_card("Period High", f"{summary.get('high', 0):,.2f}", sample=True)
+        with m4:
+            metric_card("Period Low", f"{summary.get('low', 0):,.2f}", sample=True)
+
+        ct = st.session_state.get("chart_type", chart_type)
+        inds = st.session_state.get("indicators", indicators)
+        sv = st.session_state.get("show_volume", show_volume)
+        bench_df = st.session_state.get("bench_df")
+        fig = advanced_price_chart(df, chart_type=ct, indicators=inds, benchmark_df=bench_df,
+                                   title=f"{st.session_state.get('price_symbol', symbol)} — {period_label}")
+        if fig is not None:
+            st.plotly_chart(fig, use_container_width=True)
+
+        # RSI / MACD sub-charts
+        if "RSI 14" in inds:
+            rsi_df = apply_indicators(df.copy(), ["RSI 14"])
+            rfig = rsi_chart(rsi_df)
+            if rfig is not None:
+                st.plotly_chart(rfig, use_container_width=True)
+        if "MACD" in inds:
+            macd_df = apply_indicators(df.copy(), ["MACD"])
+            mfig = macd_chart(macd_df)
+            if mfig is not None:
+                st.plotly_chart(mfig, use_container_width=True)
+
+        sample_note("Prices sourced from yfinance (optional, unofficial). All values are live-fetched, not verified exchange data. Delayed data, not real-time.")
     else:
-        empty_state("Select a stock and click 'Load Price History'.")
+        empty_state("Select options and click 'Load Price History'.")
 
 
 def render_comparison() -> None:
