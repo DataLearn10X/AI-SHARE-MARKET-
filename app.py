@@ -84,19 +84,39 @@ SECTION_ICONS = {
     "Alerts": "🔔",
 }
 
-with st.sidebar:
+# --- Top navigation header ---
+header_cols = st.columns([2, 3, 7])
+with header_cols[0]:
     st.markdown("## 📈 AI Share Market")
     st.caption("Research Agent — v1.0")
-    st.markdown("---")
-    section = st.radio(
+with header_cols[1]:
+    global_search = st.text_input("🔍 Search stocks", placeholder="RELIANCE, TCS, INFY...", label_visibility="collapsed", key="global_search")
+with header_cols[2]:
+    nav = st.radio(
         "Navigation",
-        SECTIONS,
-        format_func=lambda s: f"{SECTION_ICONS.get(s, '')}  {s}",
+        ["Dashboard", "Stock Analysis", "Compare Stocks", "Stock Screener", "AI Research", "Watchlist", "Portfolio", "Alerts", "About"],
+        horizontal=True,
         label_visibility="collapsed",
     )
-    st.markdown("---")
+
+if global_search:
+    res = search_companies(global_search)
+    if res:
+        st.info(f"Search results for '{global_search}': " + ", ".join(c.symbol for c in res[:8]))
+    else:
+        st.warning(f"No companies found for '{global_search}'.")
+
+st.markdown("---")
+
+with st.sidebar:
+    st.markdown("### Application")
     st.caption(f"Environment: **{settings.APP_ENV}**")
     st.caption("Version: v1.0.0")
+    with st.expander("Health Check", expanded=False):
+        health = health_status()
+        st.json(health)
+        for p in market_data_service.provider_status():
+            st.write(f"- {p['name']}: {'✅' if p['available'] else '⚠️'}")
 
 page_header(
     "AI Share Market Research Agent",
@@ -755,17 +775,93 @@ def render_alerts() -> None:
     sample_note("Alerts evaluated against live yfinance data (unofficial). No auto-trading.")
 
 
-renderer = {
-    "Market Overview": render_market_overview,
-    "Search Indian Stocks": render_search,
-    "Fundamental Analysis": render_fundamental,
-    "Price History": render_price_history,
-    "Company Comparison": render_comparison,
-    "Stock Screener": render_screener,
-    "AI Research Reports": render_ai_reports,
-    "My Watchlist": render_watchlist,
-    "Portfolio": render_portfolio,
-    "Alerts": render_alerts,
-}
+if nav == "Dashboard":
+    render_market_overview()
+    section_header("Stock Search")
+    render_search()
+    section_header("Stock Search")
+    render_search()
 
-renderer[section]()
+elif nav == "Stock Analysis":
+    symbols = [c.symbol for c in search_companies("")]
+    default_sym = st.session_state.get("analysis_symbol", symbols[0] if symbols else "")
+    idx = symbols.index(default_sym) if default_sym in symbols else 0
+    symbol = st.selectbox("Select Stock", symbols, index=idx, key="analysis_symbol_select")
+    st.session_state["analysis_symbol"] = symbol
+
+    tabs = st.tabs([
+        "Overview", "Fundamentals", "Financials", "Price History", "Valuation",
+        "Peers", "Shareholding", "Dividends & Events", "News", "AI Research"
+    ])
+
+    with tabs[0]:
+        page_header(f"{symbol} — Overview", "Company profile and key metrics.")
+        company = get_company(symbol)
+        if company:
+            profile_card(company.to_dict())
+        # live quote overview
+        q = market_data_service.get_quote(symbol)
+        if q and q.get("price") is not None:
+            st.metric("Live Price", q.get("price"))
+        else:
+            st.info("Live price unavailable.")
+        sample_note("Profile from sample seed; price from yfinance (unofficial).")
+
+    with tabs[1]:
+        render_fundamental()
+
+    with tabs[2]:
+        page_header("Financials", "Income, balance sheet, cash flow, quarterly.")
+        # reuse fundamental financial sections by calling a lightweight version:
+        st.info("Use the Fundamental Analysis tab for full financial statements.")
+
+    with tabs[3]:
+        render_price_history()
+
+    with tabs[4]:
+        page_header("Valuation", "P/E, P/B, PEG, dividend yield.")
+        st.info("Use Fundamental Analysis → Valuation section.")
+
+    with tabs[5]:
+        page_header("Peers", "Compare with industry peers.")
+        render_comparison()
+
+    with tabs[6]:
+        page_header("Shareholding", "Shareholding pattern.")
+        empty_state("Shareholding data not yet integrated. Coming in Phase 5.")
+
+    with tabs[7]:
+        page_header("Dividends & Events", "Dividend history and corporate actions.")
+        empty_state("Dividend history and corporate actions coming in Phase 5.")
+
+    with tabs[8]:
+        page_header("News", "Company news and announcements.")
+        empty_state("News integration coming in Phase 5.")
+
+    with tabs[9]:
+        render_ai_reports()
+
+elif nav == "Compare Stocks":
+    render_comparison()
+
+elif nav == "Stock Screener":
+    render_screener()
+
+elif nav == "AI Research":
+    render_ai_reports()
+
+elif nav == "Watchlist":
+    render_watchlist()
+
+elif nav == "Portfolio":
+    render_portfolio()
+
+elif nav == "Alerts":
+    render_alerts()
+
+elif nav == "About":
+    page_header("About", "AI Share Market Research Platform")
+    st.markdown(
+        "A research and educational tool for Indian (NSE/BSE) stocks. "
+        "Not investment advice. Data sourced from yfinance (unofficial) and local sample seed."
+    )
